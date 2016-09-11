@@ -23,62 +23,6 @@
 #include "mqtt.h"
 
 
-static TaskHandle_t xMqttTask = NULL;
-
-int resolev_dns(const char *host, struct sockaddr_in *ip) {
-    struct hostent *he;
-    struct in_addr **addr_list;
-    he = gethostbyname(host);
-    if (he == NULL) return 0;
-    addr_list = (struct in_addr **)he->h_addr_list;
-    if (addr_list[0] == NULL) return 0;
-    ip->sin_family = AF_INET;
-    memcpy(&ip->sin_addr, addr_list[0], sizeof(ip->sin_addr));
-    return 1;
-}
-
-int client_connect(const char *stream_host, const char *stream_path, int stream_port)
-{
-    while (1) {
-
-        struct sockaddr_in remote_ip;
-        bzero(&remote_ip, sizeof(struct sockaddr_in));
-
-        //if stream_host is not ip address, resolve it
-        if (inet_pton(AF_INET, stream_host, &(remote_ip.sin_addr)) != 1) {
-            if (!resolev_dns(stream_host, &remote_ip)) {
-                vTaskDelay(1000 / portTICK_RATE_MS);
-                continue;
-            }
-        }
-        int sock = socket(PF_INET, SOCK_STREAM, 0);
-
-        if (sock == -1) {
-            continue;
-        }
-
-        remote_ip.sin_port = htons(stream_port);
-        INFO("[READER] Connecting to server %s...:%d,%d\n", ipaddr_ntoa((const ip_addr_t*)&remote_ip.sin_addr.s_addr), stream_port, remote_ip.sin_port);
-
-        if (connect(sock, (struct sockaddr *)(&remote_ip), sizeof(struct sockaddr)) != 00) {
-            close(sock);
-            INFO("[READER] Conn err.\n");
-            vTaskDelay(1000 / portTICK_RATE_MS);
-            continue;
-        }
-        //Cobble together HTTP request
-        write(sock, "GET ", 4);
-        write(sock, stream_path, strlen(stream_path));
-        write(sock, " HTTP/1.0\r\nHost: ", 17);
-        write(sock, stream_host, strlen(stream_host));
-        write(sock, "\r\n\r\n", 4);
-        //We ignore the headers that the server sends back... it's pretty dirty in general to do that,
-        //but it works here because the aac decoder skips it because it isn't valid aac data.
-        return sock;
-    }
-
-}
-
 void mqtt_connected(void *params)
 {
 
@@ -126,7 +70,8 @@ void app_main()
     esp_wifi_set_config(WIFI_IF_STA, &cfg);
     esp_wifi_start();
     esp_wifi_connect();
-    INFO("[APP] Create MQTT task\r\n");
+
+    INFO("[APP] Initial MQTT task\r\n");
 
     mqtt_settings mqtt_info = {
         .host = "192.168.0.1",
@@ -145,8 +90,8 @@ void app_main()
         .publish_cb = mqtt_publish,
         .data_cb = mqtt_data
     };
+
     // Notice that, all callback will called in mqtt_task
     // All function publish, subscribe
-    xTaskCreate(&mqtt_task, "mqtt_task", 2048, &mqtt_info, MQTT_PRIORITY, &xMqttTask);
-    //xTaskCreatePinnedToCore(&download_task, "cpu2", 2048, buf2, 6, NULL, 1);
+    mqtt_start(&mqtt_info);
 }
