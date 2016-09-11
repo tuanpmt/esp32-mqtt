@@ -1,0 +1,7 @@
+.DS_Store
+.output
+map.txt
+main/include/user_config.local.h
+bin
+build
+*.old
