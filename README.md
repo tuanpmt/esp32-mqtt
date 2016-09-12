@@ -29,6 +29,7 @@ Run command `make menuconfig` to change SERIAL PORT configuration and the option
 - `CONFIG_MQTT_MAX_LWT_TOPIC`: default is 32 bytes
 - `CONFIG_MQTT_MAX_LWT_MSG`: default is 32 bytes
 
+Copy `main/include/user_config.sample.h` to `main/include/user_config.local.h` and provide `WIFI_SSID`, `WIFI_PASS`
 
 `make && make flash`
 
