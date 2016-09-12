@@ -121,5 +121,4 @@ void app_main()
     // Notice that, all callback will called in mqtt_task
     // All function publish, subscribe
     mqtt_start(&settings);
-    while (1);
 }
