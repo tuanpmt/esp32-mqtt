@@ -48,6 +48,26 @@ void mqtt_data(void *params)
 
 }
 
+mqtt_settings settings = {
+    .host = "192.168.0.103",
+    .port = 1883,
+    .client_id = "mqtt_client_id",
+    .username = "user",
+    .password = "pass",
+    .clean_session = 0,
+    .keepalive = 120,
+    .lwt_topic = "/lwt",
+    .lwt_msg = "offline",
+    .lwt_qos = 0,
+    .lwt_retain = 0,
+    .connected_cb = mqtt_connected,
+    .disconnected_cb = mqtt_disconnected,
+    .reconnect_cb = mqtt_reconnect,
+    .subscribe_cb = mqtt_subscribe,
+    .publish_cb = mqtt_publish,
+    .data_cb = mqtt_data
+};
+
 void app_main()
 {
     wifi_config_t cfg;
@@ -61,7 +81,7 @@ void app_main()
     WRITE_PERI_REG(CPU_PER_CONF_REG, 0x01);
     INFO("[APP] Setup CPU run as 160MHz - Done\n");
 #endif
-    INFO("[APP] Start ..\n");
+    INFO("[APP] Start, connect to Wifi network: %s ..\n", WIFI_SSID);
 
     strcpy(cfg.sta.ssid, WIFI_SSID);
     strcpy(cfg.sta.password, WIFI_PASS);
@@ -73,25 +93,8 @@ void app_main()
 
     INFO("[APP] Initial MQTT task\r\n");
 
-    mqtt_settings mqtt_info = {
-        .host = "192.168.0.1",
-        .port = 1883,
-        .client_id = "mqtt_client_id",
-        .username = "user",
-        .password = "pass",
-        .clean_session = 0,
-        .keepalive = 120,
-        .lwt_topic = "/lwt",
-        .lwt_msg = "offline",
-        .connected_cb = mqtt_connected,
-        .disconnected_cb = mqtt_disconnected,
-        .reconnect_cb = mqtt_reconnect,
-        .subscribe_cb = mqtt_subscribe,
-        .publish_cb = mqtt_publish,
-        .data_cb = mqtt_data
-    };
-
     // Notice that, all callback will called in mqtt_task
     // All function publish, subscribe
-    mqtt_start(&mqtt_info);
+    mqtt_start(&settings);
+    while (1);
 }
