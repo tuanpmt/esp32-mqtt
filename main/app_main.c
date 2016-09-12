@@ -23,27 +23,28 @@
 #include "mqtt.h"
 
 
-void mqtt_connected(void *params)
+void connected(void *params)
+{
+    mqtt_client *client = (mqtt_client *)params;
+    mqtt_subscribe(client, "/test", 0);
+}
+void disconnected(void *params)
 {
 
 }
-void mqtt_disconnected(void *params)
+void reconnect(void *params)
 {
 
 }
-void mqtt_reconnect(void *params)
+void subscribe(void *params)
 {
 
 }
-void mqtt_subscribe(void *params)
+void publish(void *params)
 {
 
 }
-void mqtt_publish(void *params)
-{
-
-}
-void mqtt_data(void *params)
+void data(void *params)
 {
 
 }
@@ -60,12 +61,12 @@ mqtt_settings settings = {
     .lwt_msg = "offline",
     .lwt_qos = 0,
     .lwt_retain = 0,
-    .connected_cb = mqtt_connected,
-    .disconnected_cb = mqtt_disconnected,
-    .reconnect_cb = mqtt_reconnect,
-    .subscribe_cb = mqtt_subscribe,
-    .publish_cb = mqtt_publish,
-    .data_cb = mqtt_data
+    .connected_cb = connected,
+    .disconnected_cb = disconnected,
+    .reconnect_cb = reconnect,
+    .subscribe_cb = subscribe,
+    .publish_cb = publish,
+    .data_cb = data
 };
 
 void app_main()
