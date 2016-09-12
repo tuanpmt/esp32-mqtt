@@ -43,9 +43,9 @@ mqtt_start(&settings);
 
 ## Todo list
 
-[ ] Create MQTT task server all protocol defined - Support subscribing, publishing, authentication, will messages, keep alive pings and all 3 QoS levels (it should be a fully functional client).
-[ ] Support mbedtls for SSL connection
-[ ] Write document
+- [ ] Create MQTT task server all protocol defined - Support subscribing, publishing, authentication, will messages, keep alive pings and all 3 QoS levels (it should be a fully functional client).
+- [ ] Support mbedtls for SSL connection
+- [ ] Write document
 
 ## License
 
