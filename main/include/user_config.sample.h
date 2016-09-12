@@ -26,9 +26,9 @@
 #define __USER_CONFIG_LOCAL_H__
 
 
-#define WIFI_SSID "TuanPM"
-#define WIFI_PASS "minhtuan"
-
+#define WIFI_SSID "SSID"
+#define WIFI_PASS "PASS"
+//#define CPU_FREQ_160MHZ
 
 #endif
 
