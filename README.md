@@ -1,9 +1,11 @@
 # ESP32 MQTT Library sample application
 
+- Dependency library: https://github.com/tuanpmt/espmqtt
+
 ## Prerequire
 
 - ESP32 compiler: 
-- ESP-IDF: 
+- ESP-IDF: https://github.com/espressif/esp-idf
 
 ## Compile
 
@@ -15,8 +17,8 @@ Run command `make menuconfig` change SERIAL PORT configuration and change the op
 
 ## Usage 
 
-```
- mqtt_settings mqtt_info = {
+```c
+ mqtt_settings settings = {
     .host = "192.168.0.1",  // or domain, ex: "google.com",
     .port = 1883,
     .client_id = "mqtt_client_id", 
@@ -35,7 +37,16 @@ Run command `make menuconfig` change SERIAL PORT configuration and change the op
     .publish_cb = mqtt_publish,
     .data_cb = mqtt_data
 };
-// Notice that, all callback will called in mqtt_task
-// All function publish, subscribe
-xTaskCreate(&mqtt_task, "mqtt_task", 2048, &mqtt_info, MQTT_PRIORITY, &xMqttTask);
+
+mqtt_start(&settings);
 ```
+
+## Todo list
+
+[ ] Create MQTT task server all protocol defined - Support subscribing, publishing, authentication, will messages, keep alive pings and all 3 QoS levels (it should be a fully functional client).
+[ ] Support mbedtls for SSL connection
+[ ] Write document
+
+## License
+
+Apache 2.0
