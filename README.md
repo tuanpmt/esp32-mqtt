@@ -48,20 +48,39 @@ Copy `main/include/user_config.sample.h` to `main/include/user_config.local.h` a
     .lwt_msg = "offline",
     .lwt_qos = 0,
     .lwt_retain = 0,
-    .connected_cb = mqtt_connected,
-    .disconnected_cb = mqtt_disconnected,
-    .reconnect_cb = mqtt_reconnect,
-    .subscribe_cb = mqtt_subscribe,
-    .publish_cb = mqtt_publish,
-    .data_cb = mqtt_data
+    .connected_cb = connected_cb, // trigger when client connected to broker with valid infomations
+    .disconnected_cb = disconnected_cb, //trigger when client disconnect from broker
+    .reconnect_cb = reconnect_cb, //trigger when client reconnect - not implement yet
+    .subscribe_cb = subscribe_cb, //trigger when client subscribe a topic successful 
+    .publish_cb = publish_cb, //trigger when client publish data to channel successful 
+    .data_cb = data_cb //trigger when client receive data from channel has subscribed
 };
 
-mqtt_start(&settings);
+mqtt_client *client = mqtt_start(&settings);
+```
+
+### Data receive from channel subscribed:
+
+```c
+void data_cb(void *self, void *params)
+{
+    mqtt_client *client = (mqtt_client *)self;
+    mqtt_event_data_t *event_data = (mqtt_event_data_t *)params;
+}
+
+typedef struct mqtt_event_data_t
+{
+  char* topic;  //point to topic 
+  char* data; //point to data
+  uint16_t topic_length; //topic len
+  uint16_t data_length; //current packet len
+  uint16_t data_offset; //total packet data len
+} mqtt_event_data_t;
 ```
 
 ## Todo list
 
-- [ ] Create MQTT task server all protocol defined - Support subscribing, publishing, authentication, will messages, keep alive pings and all 3 QoS levels (it should be a fully functional client).
+- [x] Create MQTT task server all protocol defined - Support subscribing, publishing, authentication, will messages, keep alive pings and all 3 QoS levels (it should be a fully functional client).
 - [ ] Support mbedtls for SSL connection
 - [ ] Write document
 
@@ -69,9 +88,10 @@ mqtt_start(&settings);
 
 - [x] Can connect, subscribe, support queue for subscribe, support lwt msg
 - [x] Direct send keepalive packet 
-- [ ] Can publish 
-- [ ] Can receive and process publish qos 0
-- [ ] Can receive and process publish qos 1 and 2 
+- [x] Can publish 
+- [x] Can receive and process publish qos 0
+- [x] Can receive and process publish qos 1 and 2 
+- [ ] Implement all events
 
 ## License
 

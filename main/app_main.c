@@ -23,29 +23,53 @@
 #include "mqtt.h"
 
 
-void connected(void *params)
+void connected_cb(void *self, void *params)
 {
-    mqtt_client *client = (mqtt_client *)params;
+    mqtt_client *client = (mqtt_client *)self;
     mqtt_subscribe(client, "/test", 0);
 }
-void disconnected(void *params)
+void disconnected_cb(void *self, void *params)
 {
 
 }
-void reconnect(void *params)
+void reconnect_cb(void *self, void *params)
 {
 
 }
-void subscribe(void *params)
+void subscribe_cb(void *self, void *params)
+{
+    INFO("[APP] Subscribe ok, test publish msg\n");
+    mqtt_client *client = (mqtt_client *)self;
+    mqtt_publish(client, "/test", "abcde", 5, 0, 0);
+}
+
+void publish_cb(void *self, void *params)
 {
 
 }
-void publish(void *params)
+void data_cb(void *self, void *params)
 {
+    mqtt_client *client = (mqtt_client *)self;
+    mqtt_event_data_t *event_data = (mqtt_event_data_t *)params;
 
-}
-void data(void *params)
-{
+    if (event_data->data_offset == 0) {
+
+        char *topic = malloc(event_data->topic_length + 1);
+        memcpy(topic, event_data->topic, event_data->topic_length);
+        topic[event_data->topic_length] = 0;
+        INFO("[APP] Publish topic: %s\n", topic);
+        free(topic);
+    }
+
+    // char *data = malloc(event_data->data_length + 1);
+    // memcpy(data, event_data->data, event_data->data_length);
+    // data[event_data->data_length] = 0;
+    INFO("[APP] Publish data[%d/%d bytes]\n",
+         event_data->data_length + event_data->data_offset,
+         event_data->data_total_length);
+         // data);
+
+    // free(data);
 
 }
 
@@ -61,12 +85,12 @@ mqtt_settings settings = {
     .lwt_msg = "offline",
     .lwt_qos = 0,
     .lwt_retain = 0,
-    .connected_cb = connected,
-    .disconnected_cb = disconnected,
-    .reconnect_cb = reconnect,
-    .subscribe_cb = subscribe,
-    .publish_cb = publish,
-    .data_cb = data
+    .connected_cb = connected_cb,
+    .disconnected_cb = disconnected_cb,
+    .reconnect_cb = reconnect_cb,
+    .subscribe_cb = subscribe_cb,
+    .publish_cb = publish_cb,
+    .data_cb = data_cb
 };
 
 void app_main()
