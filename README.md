@@ -72,9 +72,10 @@ typedef struct mqtt_event_data_t
 {
   char* topic;  //point to topic 
   char* data; //point to data
-  uint16_t topic_length; //topic len
-  uint16_t data_length; //current packet len
-  uint16_t data_offset; //total packet data len
+  uint16_t topic_length;
+  uint16_t data_length; //current packet length
+  uint16_t data_offset; //current packet offset
+  uint16_t data_total_length; //total packet length
 } mqtt_event_data_t;
 ```
 
