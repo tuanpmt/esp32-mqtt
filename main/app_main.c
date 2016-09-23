@@ -27,6 +27,7 @@ void connected_cb(void *self, void *params)
 {
     mqtt_client *client = (mqtt_client *)self;
     mqtt_subscribe(client, "/test", 0);
+    mqtt_publish(client, "/test", "howdy!", 6, 0, 0);
 }
 void disconnected_cb(void *self, void *params)
 {
