@@ -23,6 +23,11 @@
 #include "mqtt.h"
 
 
+esp_err_t event_handler(void *ctx, system_event_t *event)
+{
+    return ESP_OK;
+}
+
 void connected_cb(void *self, void *params)
 {
     mqtt_client *client = (mqtt_client *)self;
@@ -68,7 +73,7 @@ void data_cb(void *self, void *params)
     INFO("[APP] Publish data[%d/%d bytes]\n",
          event_data->data_length + event_data->data_offset,
          event_data->data_total_length);
-         // data);
+    // data);
 
     // free(data);
 
@@ -96,27 +101,34 @@ mqtt_settings settings = {
 
 void app_main()
 {
-    wifi_config_t cfg;
+
     INFO("[APP] Startup..\n");
     INFO("[APP] Free memory: %d bytes\n", system_get_free_heap_size());
     INFO("[APP] SDK version: %s, Build time: %s\n", system_get_sdk_version(), BUID_TIME);
 
-#ifdef CPU_FREQ_160MHZ
-    INFO("[APP] Setup CPU run as 160MHz\n");
-    SET_PERI_REG_BITS(RTC_CLK_CONF, RTC_CNTL_SOC_CLK_SEL, 0x1, RTC_CNTL_SOC_CLK_SEL_S);
-    WRITE_PERI_REG(CPU_PER_CONF_REG, 0x01);
-    INFO("[APP] Setup CPU run as 160MHz - Done\n");
-#endif
+    nvs_flash_init();
+    system_init();
+    tcpip_adapter_init();
+    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
+    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+
+    wifi_config_t sta_config = {
+        .sta = {
+            .ssid = WIFI_SSID,
+            .password = WIFI_PASS,
+            .bssid_set = false
+        }
+    };
+
+
+    ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &sta_config) );
+    ESP_ERROR_CHECK( esp_wifi_start() );
+    ESP_ERROR_CHECK( esp_wifi_connect() );
+
     INFO("[APP] Start, connect to Wifi network: %s ..\n", WIFI_SSID);
-
-    strcpy(cfg.sta.ssid, WIFI_SSID);
-    strcpy(cfg.sta.password, WIFI_PASS);
-
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_set_config(WIFI_IF_STA, &cfg);
-    esp_wifi_start();
-    esp_wifi_connect();
-
     INFO("[APP] Initial MQTT task\r\n");
 
     // Notice that, all callback will called in mqtt_task
