@@ -5,3 +5,4 @@ main/include/user_config.local.h
 bin
 build
 *.old
+sdkconfig

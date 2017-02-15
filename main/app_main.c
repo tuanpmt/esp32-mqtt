@@ -7,6 +7,9 @@
 
 #include "esp_wifi.h"
 #include "esp_system.h"
+#include "nvs_flash.h"
+#include "esp_event_loop.h"
+
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -23,11 +26,6 @@
 #include "mqtt.h"
 
 #define MQTT_APP_TAG "MQTT APP"
-
-esp_err_t event_handler(void *ctx, system_event_t *event)
-{
-    return ESP_OK;
-}
 
 void connected_cb(void *self, void *params)
 {
@@ -81,9 +79,13 @@ void data_cb(void *self, void *params)
 }
 
 mqtt_settings settings = {
-    .host = "192.168.0.103",
-    .port = 1883,
-    .client_id = "mqtt_client_id",
+    .host = "test.mosquitto.org",
+#if defined(CONFIG_MQTT_SECURITY_ON)
+    .port = 8883, // encrypted
+#else
+    .port = 1883, // unencrypted
+#endif
+    .client_id = "mqtt_client_id1",
     .username = "user",
     .password = "pass",
     .clean_session = 0,
@@ -100,6 +102,35 @@ mqtt_settings settings = {
     .data_cb = data_cb
 };
 
+static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
+{
+
+    switch(event->event_id) {
+    case SYSTEM_EVENT_STA_START:
+        ESP_ERROR_CHECK(esp_wifi_connect());
+        break;
+
+    case SYSTEM_EVENT_STA_GOT_IP:
+
+        mqtt_start(&settings);
+        // Notice that, all callback will called in mqtt_task
+        // All function publish, subscribe
+        break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+        /* This is a workaround as ESP32 WiFi libs don't currently
+           auto-reassociate. */
+
+        mqtt_stop();
+        ESP_ERROR_CHECK(esp_wifi_connect());
+        break;
+    default:
+        break;
+    }
+    return ESP_OK;
+
+
+}
+
 void app_main()
 {
 
@@ -110,7 +141,7 @@ void app_main()
     nvs_flash_init();
     system_init();
     tcpip_adapter_init();
-    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    ESP_ERROR_CHECK( esp_event_loop_init(wifi_event_handler, NULL) );
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
     ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
@@ -135,3 +166,4 @@ void app_main()
     // Notice that, all callback will called in mqtt_task
     mqtt_start(&settings);
 }
+
