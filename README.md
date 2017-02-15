@@ -4,7 +4,7 @@
 
 ## Prerequire
 
-- ESP32 compiler: 
+- ESP32 compiler
 - ESP-IDF: https://github.com/espressif/esp-idf
 
 ## Compile
@@ -48,12 +48,12 @@ Copy `main/include/user_config.sample.h` to `main/include/user_config.local.h` a
     .lwt_msg = "offline",
     .lwt_qos = 0,
     .lwt_retain = 0,
-    .connected_cb = connected_cb, // trigger when client connected to broker with valid infomations
-    .disconnected_cb = disconnected_cb, //trigger when client disconnect from broker
-    .reconnect_cb = reconnect_cb, //trigger when client reconnect - not implement yet
-    .subscribe_cb = subscribe_cb, //trigger when client subscribe a topic successful 
-    .publish_cb = publish_cb, //trigger when client publish data to channel successful 
-    .data_cb = data_cb //trigger when client receive data from channel has subscribed
+    .connected_cb = connected_cb, // called when client connected to broker with valid infomations
+    .disconnected_cb = disconnected_cb, //called when client disconnect from broker
+    .reconnect_cb = reconnect_cb, //called when client reconnect - not implement yet
+    .subscribe_cb = subscribe_cb, //called when client subscribe a topic successful 
+    .publish_cb = publish_cb, //called when client publish data to channel successful 
+    .data_cb = data_cb //called when client receive data from channel has subscribed
 };
 
 mqtt_client *client = mqtt_start(&settings);
