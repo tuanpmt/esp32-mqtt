@@ -18,10 +18,11 @@
 #include "lwip/netdb.h"
 
 #include "user_config.h"
-#include "debug.h"
+#include "esp_log.h"
 
 #include "mqtt.h"
 
+#define MQTT_APP_TAG "MQTT APP"
 
 esp_err_t event_handler(void *ctx, system_event_t *event)
 {
@@ -44,8 +45,8 @@ void reconnect_cb(void *self, void *params)
 }
 void subscribe_cb(void *self, void *params)
 {
-    INFO("[APP] Subscribe ok, test publish msg\n");
     mqtt_client *client = (mqtt_client *)self;
+    ESP_LOGI(MQTT_APP_TAG, "Subscribe ok, test publish msg\n");
     mqtt_publish(client, "/test", "abcde", 5, 0, 0);
 }
 
@@ -63,14 +64,14 @@ void data_cb(void *self, void *params)
         char *topic = malloc(event_data->topic_length + 1);
         memcpy(topic, event_data->topic, event_data->topic_length);
         topic[event_data->topic_length] = 0;
-        INFO("[APP] Publish topic: %s\n", topic);
+        ESP_LOGI(MQTT_APP_TAG, "Publish topic: %s\n", topic);
         free(topic);
     }
 
     // char *data = malloc(event_data->data_length + 1);
     // memcpy(data, event_data->data, event_data->data_length);
     // data[event_data->data_length] = 0;
-    INFO("[APP] Publish data[%d/%d bytes]\n",
+    ESP_LOGI(MQTT_APP_TAG, "Publish data[%d/%d bytes]\n",
          event_data->data_length + event_data->data_offset,
          event_data->data_total_length);
     // data);
@@ -102,9 +103,9 @@ mqtt_settings settings = {
 void app_main()
 {
 
-    INFO("[APP] Startup..\n");
-    INFO("[APP] Free memory: %d bytes\n", system_get_free_heap_size());
-    INFO("[APP] SDK version: %s, Build time: %s\n", system_get_sdk_version(), BUID_TIME);
+    ESP_LOGI(MQTT_APP_TAG, "Startup..\n");
+    ESP_LOGI(MQTT_APP_TAG, "Free memory: %d bytes\n", esp_get_free_heap_size());
+    ESP_LOGI(MQTT_APP_TAG, "SDK version: %s, Build time: %s\n", system_get_sdk_version(), BUID_TIME);
 
     nvs_flash_init();
     system_init();
@@ -128,10 +129,9 @@ void app_main()
     ESP_ERROR_CHECK( esp_wifi_start() );
     ESP_ERROR_CHECK( esp_wifi_connect() );
 
-    INFO("[APP] Start, connect to Wifi network: %s ..\n", WIFI_SSID);
-    INFO("[APP] Initial MQTT task\r\n");
+    ESP_LOGI(MQTT_APP_TAG, "Start, connect to Wifi network: %s ..\n", WIFI_SSID);
+    ESP_LOGI(MQTT_APP_TAG, "Initial MQTT task\r\n");
 
     // Notice that, all callback will called in mqtt_task
-    // All function publish, subscribe
     mqtt_start(&settings);
 }
