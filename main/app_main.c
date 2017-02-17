@@ -7,6 +7,9 @@
 
 #include "esp_wifi.h"
 #include "esp_system.h"
+#include "nvs_flash.h"
+#include "esp_event_loop.h"
+
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -75,8 +78,12 @@ void data_cb(void *self, void *params)
 }
 
 mqtt_settings settings = {
-    .host = "192.168.0.103",
-    .port = 1883,
+    .host = "test.mosquitto.org",
+#if defined(CONFIG_MQTT_SECURITY_ON)         
+    .port = 8883, // encrypted
+#else
+    .port = 1883, // unencrypted
+#endif    
     .client_id = "mqtt_client_id",
     .username = "user",
     .password = "pass",
@@ -94,9 +101,61 @@ mqtt_settings settings = {
     .data_cb = data_cb
 };
 
+static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
+{
+
+    switch(event->event_id) {
+    case SYSTEM_EVENT_STA_START:
+        ESP_ERROR_CHECK(esp_wifi_connect());
+        break;
+
+    case SYSTEM_EVENT_STA_GOT_IP:
+
+        mqtt_start(&settings);
+        // Notice that, all callback will called in mqtt_task
+        // All function publish, subscribe
+        break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+        /* This is a workaround as ESP32 WiFi libs don't currently
+           auto-reassociate. */
+        
+        mqtt_stop();
+        ESP_ERROR_CHECK(esp_wifi_connect());
+        break;
+    default:
+        break;
+    }
+    return ESP_OK;
+
+
+}
+
+void wifi_conn_init(void)
+{
+    INFO("[APP] Start, connect to Wifi network: %s ..\n", WIFI_SSID);
+
+    tcpip_adapter_init();
+
+    ESP_ERROR_CHECK( esp_event_loop_init(wifi_event_handler, NULL) );
+
+    wifi_init_config_t icfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK( esp_wifi_init(&icfg) );
+    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = WIFI_SSID,
+            .password = WIFI_PASS
+        },
+    };
+
+    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK( esp_wifi_start());
+}
+
 void app_main()
 {
-    wifi_config_t cfg;
     INFO("[APP] Startup..\n");
     INFO("[APP] Free memory: %d bytes\n", system_get_free_heap_size());
     INFO("[APP] SDK version: %s, Build time: %s\n", system_get_sdk_version(), BUID_TIME);
@@ -107,19 +166,7 @@ void app_main()
     WRITE_PERI_REG(CPU_PER_CONF_REG, 0x01);
     INFO("[APP] Setup CPU run as 160MHz - Done\n");
 #endif
-    INFO("[APP] Start, connect to Wifi network: %s ..\n", WIFI_SSID);
-
-    strcpy(cfg.sta.ssid, WIFI_SSID);
-    strcpy(cfg.sta.password, WIFI_PASS);
-
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_set_config(WIFI_IF_STA, &cfg);
-    esp_wifi_start();
-    esp_wifi_connect();
-
-    INFO("[APP] Initial MQTT task\r\n");
-
-    // Notice that, all callback will called in mqtt_task
-    // All function publish, subscribe
-    mqtt_start(&settings);
+ 
+    nvs_flash_init();
+    wifi_conn_init();
 }
