@@ -14,7 +14,7 @@
 Run command `make menuconfig` to change SERIAL PORT configuration and the options at `Component config -> MQTT `:
 
 - `CONFIG_MQTT_PROTOCOL_311`: default is yes
-- `CONFIG_MQTT_SECURITY_ON`: default is yes (but not support yet)
+- `CONFIG_MQTT_SECURITY_ON`: default is yes 
 - `CONFIG_MQTT_PRIORITY`: default 5
 - `CONFIG_MQTT_LOG_ERROR_ON`: defaut is yes
 - `CONFIG_MQTT_LOG_WARN_ON`: defaut is yes
