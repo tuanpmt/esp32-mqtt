@@ -18,106 +18,70 @@
 #include "lwip/netdb.h"
 
 #include "esp_log.h"
-#include "mqtt.h"
+#include "mqtt_client.h"
 
-const char *MQTT_TAG = "MQTT_SAMPLE";
+static const char *TAG = "MQTT_SAMPLE";
 
 static EventGroupHandle_t wifi_event_group;
 const static int CONNECTED_BIT = BIT0;
 
-void connected_cb(void *self, void *params)
-{
-    mqtt_client *client = (mqtt_client *)self;
-    mqtt_subscribe(client, "/test", 0);
-    mqtt_publish(client, "/test", "howdy!", 6, 0, 0);
-}
-void disconnected_cb(void *self, void *params)
-{
 
-}
-void reconnect_cb(void *self, void *params)
+static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 {
+    esp_mqtt_client_handle_t client = event->client;
+    int msg_id;
+    // your_context_t *context = event->context;
+    switch (event->event_id) {
+        case MQTT_EVENT_CONNECTED:
+            ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+            msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
+            ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-}
-void subscribe_cb(void *self, void *params)
-{
-    ESP_LOGI(MQTT_TAG, "[APP] Subscribe ok, test publish msg");
-    mqtt_client *client = (mqtt_client *)self;
-    mqtt_publish(client, "/test", "abcde", 5, 0, 0);
-}
+            msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
+            ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
 
-void publish_cb(void *self, void *params)
-{
+            msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
+            ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
+            break;
+        case MQTT_EVENT_DISCONNECTED:
+            ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+            break;
 
-}
-void data_cb(void *self, void *params)
-{
-    mqtt_client *client = (mqtt_client *)self;
-    mqtt_event_data_t *event_data = (mqtt_event_data_t *)params;
-
-    if(event_data->data_offset == 0) {
-
-        char *topic = malloc(event_data->topic_length + 1);
-        memcpy(topic, event_data->topic, event_data->topic_length);
-        topic[event_data->topic_length] = 0;
-        ESP_LOGI(MQTT_TAG, "[APP] Publish topic: %s", topic);
-        free(topic);
+        case MQTT_EVENT_SUBSCRIBED:
+            ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
+            msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
+            ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+            break;
+        case MQTT_EVENT_UNSUBSCRIBED:
+            ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
+            break;
+        case MQTT_EVENT_PUBLISHED:
+            ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+            break;
+        case MQTT_EVENT_DATA:
+            ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+            printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+            printf("DATA=%.*s\r\n", event->data_len, event->data);
+            break;
+        case MQTT_EVENT_ERROR:
+            ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+            break;
     }
-
-    // char *data = malloc(event_data->data_length + 1);
-    // memcpy(data, event_data->data, event_data->data_length);
-    // data[event_data->data_length] = 0;
-    ESP_LOGI(MQTT_TAG, "[APP] Publish data[%d/%d bytes]",
-             event_data->data_length + event_data->data_offset,
-             event_data->data_total_length);
-    // data);
-
-    // free(data);
-
+    return ESP_OK;
 }
-
-mqtt_settings settings = {
-    .host = "test.mosquitto.org",
-#if defined(CONFIG_MQTT_SECURITY_ON)
-    .port = 8883, // encrypted
-#else
-    .port = 1883, // unencrypted
-#endif
-    .client_id = "mqtt_client_id",
-    .username = "user",
-    .password = "pass",
-    .clean_session = 0,
-    .keepalive = 120,
-    .lwt_topic = "/lwt",
-    .lwt_msg = "offline",
-    .lwt_qos = 0,
-    .lwt_retain = 0,
-    .connected_cb = connected_cb,
-    .disconnected_cb = disconnected_cb,
-    .reconnect_cb = reconnect_cb,
-    .subscribe_cb = subscribe_cb,
-    .publish_cb = publish_cb,
-    .data_cb = data_cb
-};
-
-
 
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
 {
-    switch(event->event_id) {
+    switch (event->event_id) {
         case SYSTEM_EVENT_STA_START:
             esp_wifi_connect();
             break;
         case SYSTEM_EVENT_STA_GOT_IP:
             xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-            mqtt_start(&settings);
-            //init app here
+
             break;
         case SYSTEM_EVENT_STA_DISCONNECTED:
-            /* This is a workaround as ESP32 WiFi libs don't currently
-               auto-reassociate. */
             esp_wifi_connect();
-            mqtt_stop();
             xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
             break;
         default:
@@ -126,7 +90,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
-static void wifi_conn_init(void)
+static void wifi_init(void)
 {
     tcpip_adapter_init();
     wifi_event_group = xEventGroupCreate();
@@ -142,16 +106,38 @@ static void wifi_conn_init(void)
     };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
-    ESP_LOGI(MQTT_TAG, "start the WIFI SSID:[%s] password:[%s]", CONFIG_WIFI_SSID, "******");
+    ESP_LOGI(TAG, "start the WIFI SSID:[%s] password:[%s]", CONFIG_WIFI_SSID, "******");
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_LOGI(TAG, "Waiting for wifi");
+    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
+}
+
+static void mqtt_app_start(void)
+{
+    const esp_mqtt_client_config_t mqtt_cfg = {
+        .uri = "mqtt://iot.eclipse.org",
+        .event_handle = mqtt_event_handler,
+        // .user_context = (void *)your_context
+    };
+
+    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
+    esp_mqtt_client_start(client);
 }
 
 void app_main()
 {
-    ESP_LOGI(MQTT_TAG, "[APP] Startup..");
-    ESP_LOGI(MQTT_TAG, "[APP] Free memory: %d bytes", system_get_free_heap_size());
-    ESP_LOGI(MQTT_TAG, "[APP] SDK version: %s, Build time: %s", system_get_sdk_version(), BUID_TIME);
+    ESP_LOGI(TAG, "[APP] Startup..");
+    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
+
+    esp_log_level_set("*", ESP_LOG_INFO);
+    esp_log_level_set("MQTT_CLIENT", ESP_LOG_VERBOSE);
+    esp_log_level_set("TRANSPORT_TCP", ESP_LOG_VERBOSE);
+    esp_log_level_set("TRANSPORT_SSL", ESP_LOG_VERBOSE);
+    esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
+    esp_log_level_set("OUTBOX", ESP_LOG_VERBOSE);
 
     nvs_flash_init();
-    wifi_conn_init();
+    wifi_init();
+    mqtt_app_start();
 }
